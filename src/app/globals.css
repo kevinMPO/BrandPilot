@@ -1,0 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * ───────────────────────────────────────────────────────────────────────
+ * DESIGN TOKENS
+ * All theme values live as CSS variables so the whole look (and dark mode)
+ * is controlled from one place. Tailwind colors map to these (see config).
+ * Dark is the default; `.light` flips to the light palette.
+ * ───────────────────────────────────────────────────────────────────────
+ */
+@layer base {
+  :root {
+    /* Dark is the default theme. */
+    --background: 240 10% 4%;
+    --foreground: 0 0% 98%;
+
+    --card: 240 8% 7%;
+    --card-foreground: 0 0% 98%;
+
+    --primary: 270 90% 65%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 5% 16%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 240 5% 14%;
+    --muted-foreground: 240 5% 65%;
+
+    --accent: 320 80% 60%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 6% 18%;
+    --input: 240 6% 18%;
+    --ring: 270 90% 65%;
+
+    /* Node type colors (hue per agent step). */
+    --node-reasoning: 270 90% 66%; /* violet */
+    --node-action: 214 90% 60%; /* bleu */
+    --node-observation: 240 5% 55%; /* gris */
+    --node-angle: 322 82% 62%; /* rose */
+    --node-verify: 172 66% 50%; /* teal (ancrage des faits) */
+    --node-memory: 38 92% 55%; /* amber (mémoire) */
+
+    /* Gradient stops: violet -> rose -> bleu (edges, accents). */
+    --gradient-from: 270 90% 65%;
+    --gradient-via: 322 82% 62%;
+    --gradient-to: 214 90% 60%;
+
+    --radius: 0.75rem;
+    --radius-card: 1rem;
+
+    --shadow-elevation-1: 0 1px 2px 0 hsl(240 10% 2% / 0.4);
+    --shadow-elevation-2: 0 6px 20px -4px hsl(240 10% 2% / 0.5);
+    --shadow-elevation-3: 0 18px 50px -12px hsl(270 90% 30% / 0.45);
+  }
+
+  .light {
+    --background: 240 20% 99%;
+    --foreground: 240 10% 8%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 8%;
+
+    --primary: 270 80% 56%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 5% 94%;
+    --secondary-foreground: 240 10% 12%;
+
+    --muted: 240 5% 95%;
+    --muted-foreground: 240 4% 40%;
+
+    --accent: 320 75% 52%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 6% 88%;
+    --input: 240 6% 88%;
+    --ring: 270 80% 56%;
+
+    --node-reasoning: 270 80% 56%;
+    --node-action: 214 85% 50%;
+    --node-observation: 240 5% 45%;
+    --node-angle: 322 75% 52%;
+    --node-verify: 172 60% 38%;
+    --node-memory: 38 88% 45%;
+
+    --shadow-elevation-1: 0 1px 2px 0 hsl(240 10% 50% / 0.12);
+    --shadow-elevation-2: 0 6px 20px -4px hsl(240 10% 40% / 0.18);
+    --shadow-elevation-3: 0 18px 50px -12px hsl(270 60% 50% / 0.25);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* ── React Flow theming so the canvas matches the dark UI ─────────────── */
+.react-flow__background {
+  background-color: hsl(var(--background));
+}
+/* React Flow sets a default node text color; force ours so titles stay legible. */
+.react-flow__node {
+  color: hsl(var(--card-foreground));
+}
+.react-flow__attribution {
+  display: none;
+}
+.react-flow__controls {
+  box-shadow: var(--shadow-elevation-2);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.react-flow__controls-button {
+  background: hsl(var(--card));
+  border-bottom: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+.react-flow__controls-button:hover {
+  background: hsl(var(--secondary));
+}
+/* Focused-from-timeline node gets a soft ring. */
+.react-flow__node.selected {
+  border-radius: var(--radius-card);
+  box-shadow: 0 0 0 2px hsl(var(--ring)), var(--shadow-elevation-3);
+}
+
+/* Radix ScrollArea wraps content in a `display:table` div, which breaks width
+ * constraints (text truncation overflows). Force block layout so truncate works. */
+[data-radix-scroll-area-viewport] > div {
+  display: block !important;
+}
+
+/* Subtle scrollbars. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--border));
+  border-radius: 999px;
+}

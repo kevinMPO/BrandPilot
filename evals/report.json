@@ -1,0 +1,45 @@
+{
+  "generatedFrom": "fixtures",
+  "rows": [
+    {
+      "subjectId": "souv-ia-pme",
+      "scores": {
+        "differentiation": 96,
+        "sourceGrounded": 100,
+        "hookStrength": 90,
+        "voiceAlignment": 96
+      },
+      "overall": 96,
+      "humanOverall": 89,
+      "mae": 7
+    },
+    {
+      "subjectId": "agents-sales",
+      "scores": {
+        "differentiation": 89,
+        "sourceGrounded": 67,
+        "hookStrength": 57,
+        "voiceAlignment": 67
+      },
+      "overall": 70,
+      "humanOverall": 56,
+      "mae": 14
+    }
+  ],
+  "meanAxis": {
+    "differentiation": 93,
+    "sourceGrounded": 84,
+    "hookStrength": 74,
+    "voiceAlignment": 82
+  },
+  "meanOverall": 83,
+  "meanMae": 11,
+  "thresholds": {
+    "differentiation": 50,
+    "sourceGrounded": 50,
+    "hookStrength": 45,
+    "voiceAlignment": 55,
+    "overall": 55
+  },
+  "pass": true
+}
