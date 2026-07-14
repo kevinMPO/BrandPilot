@@ -50,6 +50,16 @@ export function isBrainMeaningful(b?: CompanyBrain | null): boolean {
   );
 }
 
+/** The social networks BrandPilot can target. Only some are live (see networks.ts). */
+export const SocialNetworkSchema = z.enum([
+  "linkedin",
+  "twitter",
+  "instagram",
+  "tiktok",
+  "facebook",
+]);
+export type SocialNetwork = z.infer<typeof SocialNetworkSchema>;
+
 /** The request the QueryBar POSTs to /api/agent/stream. */
 export const RunRequestSchema = z.object({
   topic: z
@@ -58,8 +68,23 @@ export const RunRequestSchema = z.object({
     .max(280, "Le sujet est trop long (280 caractères max)."),
   /** Optional author/brand context, so the agent writes in the user's voice. */
   companyBrain: CompanyBrainSchema.optional(),
+  /** Target social network — adapts the post format. Defaults to LinkedIn. */
+  network: SocialNetworkSchema.optional().default("linkedin"),
 });
 export type RunRequest = z.infer<typeof RunRequestSchema>;
+
+/** A post scheduled in the Planner (client-side queue, localStorage). */
+export const ScheduledPostSchema = z.object({
+  id: z.string(),
+  network: SocialNetworkSchema,
+  /** The ready-to-publish post text (already network-formatted). */
+  text: z.string(),
+  /** When to publish — a datetime-local string "YYYY-MM-DDTHH:mm" (local time). */
+  scheduledAt: z.string(),
+  /** ISO creation timestamp. */
+  createdAt: z.string(),
+});
+export type ScheduledPost = z.infer<typeof ScheduledPostSchema>;
 
 /** Request to enrich a Company Brain from the web (POST /api/company-brain/enrich). */
 export const EnrichRequestSchema = z.object({

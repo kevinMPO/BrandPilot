@@ -1,5 +1,10 @@
 import { NextRequest } from "next/server";
-import { RunRequestSchema, type AgentEvent, type CompanyBrain } from "@/mastra/lib/schemas";
+import {
+  RunRequestSchema,
+  type AgentEvent,
+  type CompanyBrain,
+  type SocialNetwork,
+} from "@/mastra/lib/schemas";
 import { runAgentStream } from "@/mastra/lib/runAgent";
 
 /**
@@ -20,11 +25,13 @@ export async function POST(req: NextRequest) {
   // ── Validate the request body against the shared Zod schema ─────────────
   let topic: string;
   let companyBrain: CompanyBrain | undefined;
+  let network: SocialNetwork = "linkedin";
   try {
     const json = await req.json();
     const parsed = RunRequestSchema.parse(json);
     topic = parsed.topic;
     companyBrain = parsed.companyBrain;
+    network = parsed.network;
   } catch {
     return new Response(
       JSON.stringify({ error: "Requête invalide. Fournis un champ \"topic\" (3–280 caractères)." }),
@@ -59,7 +66,7 @@ export async function POST(req: NextRequest) {
       controller.enqueue(encoder.encode(": connected\n\n"));
 
       try {
-        await runAgentStream({ topic, companyBrain, emit });
+        await runAgentStream({ topic, companyBrain, network, emit });
       } finally {
         if (!closed) {
           controller.enqueue(encoder.encode("event: done\ndata: {}\n\n"));

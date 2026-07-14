@@ -1,7 +1,8 @@
 import { RunEmitter, type RawEmit } from "./events";
 import { hasModelCredentials } from "./models";
 import { runMockAgent } from "./mockAgent";
-import { isBrainMeaningful, type Angle, type CompanyBrain } from "./schemas";
+import { isBrainMeaningful, type Angle, type CompanyBrain, type SocialNetwork } from "./schemas";
+import { formatDirective } from "./networks";
 import { SourceRegistry } from "./sourceRegistry";
 import { prewarmBrightData, type WebSearchResponse } from "../tools/brightDataSearch";
 
@@ -19,6 +20,7 @@ export async function runAgentStream(args: {
   topic: string;
   emit: RawEmit;
   companyBrain?: CompanyBrain;
+  network?: SocialNetwork;
 }): Promise<void> {
   const emitter = new RunEmitter(args.emit);
   const { recallCovered, recordRun, extractThemes } = await import("../memory/memoryStore");
@@ -37,7 +39,13 @@ export async function runAgentStream(args: {
   try {
     if (hasModelCredentials()) {
       prewarmBrightData(); // warm MCP while the model starts thinking
-      produced = await runRealAgent({ topic: args.topic, emitter, avoid, brain: args.companyBrain });
+      produced = await runRealAgent({
+        topic: args.topic,
+        emitter,
+        avoid,
+        brain: args.companyBrain,
+        network: args.network ?? "linkedin",
+      });
     } else {
       produced = await runMockAgent({ topic: args.topic, emitter, avoid, brain: args.companyBrain });
     }
@@ -82,8 +90,9 @@ async function runRealAgent(args: {
   emitter: RunEmitter;
   avoid: { themes: string[]; hooks: string[] };
   brain?: CompanyBrain;
+  network: SocialNetwork;
 }): Promise<Angle[]> {
-  const { topic, emitter, avoid, brain } = args;
+  const { topic, emitter, avoid, brain, network } = args;
   // Imported lazily so the demo path never loads Mastra/the model.
   const { getMastra } = await import("../index");
   const agent = getMastra().getAgent("contentAgent");
@@ -120,7 +129,7 @@ async function runRealAgent(args: {
     emittedLen = 0;
   };
 
-  const result = await agent.stream(buildPrompt(topic, avoid, brain), { maxSteps: MAX_STEPS });
+  const result = await agent.stream(buildPrompt(topic, avoid, brain, network), { maxSteps: MAX_STEPS });
 
   for await (const part of result.fullStream) {
     switch (part.type) {
@@ -323,6 +332,7 @@ function buildPrompt(
   topic: string,
   avoid: { themes: string[]; hooks: string[] },
   brain?: CompanyBrain,
+  network: SocialNetwork = "linkedin",
 ): string {
   const avoidBlock =
     avoid.hooks.length > 0
@@ -341,6 +351,7 @@ function buildPrompt(
     topic,
     "</sujet>",
     authorBlock,
+    formatDirective(network),
     avoidBlock,
     "",
     "Commence par réfléchir, puis recherche le web autant de fois que nécessaire, puis appelle publishAngles avec exactement 3 angles différenciés et sourcés.",

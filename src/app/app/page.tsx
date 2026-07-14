@@ -9,15 +9,17 @@ import { Github, PanelRightOpen, Plane, Home } from "lucide-react";
 import { useAgentStream } from "@/hooks/useAgentStream";
 import { useCompanyBrain } from "@/hooks/useCompanyBrain";
 import { useInspirationStream } from "@/hooks/useInspirationStream";
+import { usePlanner } from "@/hooks/usePlanner";
 import { QueryBar } from "@/components/QueryBar";
 import { ResultPanel } from "@/components/ResultPanel";
 import { RunTimeline } from "@/components/RunTimeline";
 import { CompanyBrainDialog } from "@/components/CompanyBrainDialog";
 import { InspirationDialog } from "@/components/InspirationDialog";
+import { PlannerDialog } from "@/components/PlannerDialog";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
-import type { Angle, InspirationIdea } from "@/mastra/lib/schemas";
+import type { Angle, InspirationIdea, SocialNetwork } from "@/mastra/lib/schemas";
 
 // React Flow is heavy and browser-only: load it dynamically, no SSR.
 const AgentCanvas = dynamic(() => import("@/components/graph/AgentCanvas"), {
@@ -29,11 +31,16 @@ export default function AgentApp() {
   const { status, events, errorMessage, run, reset, abort } = useAgentStream();
   const { brain, save, clear, configured } = useCompanyBrain();
   const inspiration = useInspirationStream();
+  const planner = usePlanner();
 
   const [topic, setTopic] = React.useState("");
   const [brainOpen, setBrainOpen] = React.useState(false);
   const [inspirationOpen, setInspirationOpen] = React.useState(false);
   const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null);
+  const [lastNetwork, setLastNetwork] = React.useState<SocialNetwork>("linkedin");
+  const [plannerOpen, setPlannerOpen] = React.useState(false);
+  const [plannerDraft, setPlannerDraft] =
+    React.useState<{ network: SocialNetwork; text: string } | null>(null);
 
   const angles = React.useMemo<Angle[]>(() => {
     const finalEvent = events.find((e) => e.type === "final");
@@ -53,9 +60,15 @@ export default function AgentApp() {
     }
   }, [status, errorMessage]);
 
-  const launch = React.useCallback(() => {
-    if (topic.trim().length >= 3) run(topic.trim(), brain);
-  }, [topic, brain, run]);
+  const launch = React.useCallback(
+    (network: SocialNetwork) => {
+      if (topic.trim().length >= 3) {
+        setLastNetwork(network);
+        run(topic.trim(), brain, network);
+      }
+    },
+    [topic, brain, run],
+  );
 
   const openInspiration = React.useCallback(() => {
     setInspirationOpen(true);
@@ -66,10 +79,20 @@ export default function AgentApp() {
     (idea: InspirationIdea) => {
       setTopic(idea.title);
       setInspirationOpen(false);
-      run(idea.title, brain);
+      run(idea.title, brain, lastNetwork);
     },
-    [run, brain],
+    [run, brain, lastNetwork],
   );
+
+  const openPlanner = React.useCallback(() => {
+    setPlannerDraft(null);
+    setPlannerOpen(true);
+  }, []);
+
+  const planPost = React.useCallback((input: { network: SocialNetwork; text: string }) => {
+    setPlannerDraft(input);
+    setPlannerOpen(true);
+  }, []);
 
   const timeline = (
     <RunTimeline events={events} selectedNodeId={selectedNodeId} onSelect={setSelectedNodeId} />
@@ -118,6 +141,7 @@ export default function AgentApp() {
           brainConfigured={configured}
           onInspire={openInspiration}
           inspiring={inspiration.status === "running"}
+          onOpenPlanner={openPlanner}
         />
       </div>
 
@@ -154,7 +178,7 @@ export default function AgentApp() {
             exit={{ height: 0, opacity: 0 }}
             className="max-h-[46vh] overflow-y-auto border-t border-border bg-background/95 px-4 py-4 sm:px-6"
           >
-            <ResultPanel angles={angles} />
+            <ResultPanel angles={angles} network={lastNetwork} onPlan={planPost} />
           </motion.div>
         )}
       </AnimatePresence>
@@ -184,6 +208,15 @@ export default function AgentApp() {
           setInspirationOpen(false);
           setBrainOpen(true);
         }}
+      />
+      <PlannerDialog
+        open={plannerOpen}
+        onOpenChange={setPlannerOpen}
+        draft={plannerDraft}
+        items={planner.items}
+        onAdd={planner.add}
+        onRemove={planner.remove}
+        onDraftScheduled={() => setPlannerDraft(null)}
       />
     </div>
   );

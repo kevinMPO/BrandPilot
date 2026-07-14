@@ -376,6 +376,7 @@ src/
 
 **Cible : Vercel** — hôte Node natif pour Next.js. Tout tourne en réel (Mastra,
 Bright Data, Linkup, SSE), sans config au-delà des variables d'environnement.
+Guide pas-à-pas : [`DEPLOY-VERCEL.md`](./DEPLOY-VERCEL.md).
 
 1. Poussez le dépôt sur GitHub.
 2. Sur [vercel.com](https://vercel.com) → **New Project** → importez le dépôt.

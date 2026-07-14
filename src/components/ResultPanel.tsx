@@ -2,14 +2,23 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
-import { Copy, Check, ExternalLink, Sparkles, CheckCircle2, Pencil } from "lucide-react";
+import { Copy, Check, ExternalLink, Sparkles, CheckCircle2, Pencil, CalendarClock } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import type { Angle } from "@/mastra/lib/schemas";
+import { formatPostForNetwork, networkLabel } from "@/mastra/lib/networks";
+import type { Angle, SocialNetwork } from "@/mastra/lib/schemas";
 
-/** The three finished angles, each editable and one-click copyable. */
-export function ResultPanel({ angles }: { angles: Angle[] }) {
+/** The finished angles: editable, network-formatted, copyable, schedulable. */
+export function ResultPanel({
+  angles,
+  network = "linkedin",
+  onPlan,
+}: {
+  angles: Angle[];
+  network?: SocialNetwork;
+  onPlan?: (input: { network: SocialNetwork; text: string }) => void;
+}) {
   if (angles.length === 0) return null;
 
   return (
@@ -17,27 +26,40 @@ export function ResultPanel({ angles }: { angles: Angle[] }) {
       <h2 className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
         <Sparkles className="h-4 w-4 text-node-angle" />
         {angles.length} angles prêts à publier
+        <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-foreground">
+          {networkLabel(network)}
+        </span>
       </h2>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {angles.map((angle, i) => (
-          <AngleCard key={i} angle={angle} index={i} />
+          <AngleCard key={i} angle={angle} index={i} network={network} onPlan={onPlan} />
         ))}
       </div>
     </section>
   );
 }
 
-function AngleCard({ angle, index }: { angle: Angle; index: number }) {
+function AngleCard({
+  angle,
+  index,
+  network,
+  onPlan,
+}: {
+  angle: Angle;
+  index: number;
+  network: SocialNetwork;
+  onPlan?: (input: { network: SocialNetwork; text: string }) => void;
+}) {
   const [copied, setCopied] = React.useState(false);
   const [editing, setEditing] = React.useState(false);
-  const [draft, setDraft] = React.useState(() => formatPost(angle));
+  const [draft, setDraft] = React.useState(() => formatPostForNetwork(angle, network));
   // Once the user edits, we stop overwriting their text with upstream upserts
-  // (the angle re-emits after the critique/revision pass).
+  // (the angle re-emits after the critique/revision pass) or a network change.
   const editedRef = React.useRef(false);
 
   React.useEffect(() => {
-    if (!editedRef.current) setDraft(formatPost(angle));
-  }, [angle]);
+    if (!editedRef.current) setDraft(formatPostForNetwork(angle, network));
+  }, [angle, network]);
 
   const copy = async () => {
     try {
@@ -140,7 +162,7 @@ function AngleCard({ angle, index }: { angle: Angle; index: number }) {
             </p>
           )}
 
-          <div className="mt-auto border-t border-border pt-2.5">
+          <div className="mt-auto flex flex-col gap-2.5 border-t border-border pt-2.5">
             {angle.sources.length > 0 ? (
               <ul className="space-y-1">
                 {angle.sources.map((src, i) => (
@@ -162,17 +184,20 @@ function AngleCard({ angle, index }: { angle: Angle; index: number }) {
                 ⚠ Aucune source — angle à vérifier avant publication.
               </p>
             )}
+
+            {onPlan && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onPlan({ network, text: draft })}
+                className="w-full gap-1.5"
+              >
+                <CalendarClock className="h-4 w-4" /> Planifier ce post
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
     </motion.div>
   );
-}
-
-/** Render a ready-to-paste LinkedIn post from an angle. */
-function formatPost(angle: Angle): string {
-  const bullets = angle.points.map((p) => `→ ${p}`).join("\n");
-  const sources =
-    angle.sources.length > 0 ? `\n\nSources :\n${angle.sources.join("\n")}` : "";
-  return `${angle.hook}\n\n${bullets}\n\n${angle.cta}${sources}`;
 }

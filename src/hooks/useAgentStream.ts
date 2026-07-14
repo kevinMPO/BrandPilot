@@ -1,7 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { AgentEventSchema, type AgentEvent, type CompanyBrain } from "@/mastra/lib/schemas";
+import {
+  AgentEventSchema,
+  type AgentEvent,
+  type CompanyBrain,
+  type SocialNetwork,
+} from "@/mastra/lib/schemas";
 
 export type RunStatus = "idle" | "running" | "done" | "error";
 
@@ -9,7 +14,7 @@ export interface UseAgentStream {
   status: RunStatus;
   events: AgentEvent[];
   errorMessage: string | null;
-  run: (topic: string, companyBrain?: CompanyBrain) => Promise<void>;
+  run: (topic: string, companyBrain?: CompanyBrain, network?: SocialNetwork) => Promise<void>;
   reset: () => void;
   abort: () => void;
 }
@@ -42,7 +47,8 @@ export function useAgentStream(): UseAgentStream {
     setStatus((s) => (s === "running" ? "idle" : s));
   }, []);
 
-  const run = React.useCallback(async (topic: string, companyBrain?: CompanyBrain) => {
+  const run = React.useCallback(
+    async (topic: string, companyBrain?: CompanyBrain, network?: SocialNetwork) => {
     controllerRef.current?.abort();
     const controller = new AbortController();
     controllerRef.current = controller;
@@ -55,7 +61,7 @@ export function useAgentStream(): UseAgentStream {
       const res = await fetch("/api/agent/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic, companyBrain }),
+        body: JSON.stringify({ topic, companyBrain, network }),
         signal: controller.signal,
       });
 
