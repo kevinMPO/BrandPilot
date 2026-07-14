@@ -1,45 +1,36 @@
 import { NextRequest } from "next/server";
-import { RunRequestSchema, type AgentEvent, type CompanyBrain } from "@/mastra/lib/schemas";
-import { runAgentStream } from "@/mastra/lib/runAgent";
+import { InspirationRequestSchema, type InspirationEvent } from "@/mastra/lib/schemas";
+import { runInspirationStream } from "@/mastra/lib/runInspiration";
 
 /**
  * ─────────────────────────────────────────────────────────────────────────
- * SSE ROUTE — streams one typed event per turn of the agent's ReAct loop.
+ * INSPIRATION SSE ROUTE — streams the idea-discovery run.
  *
- * Must run on the Node.js runtime (NOT edge): the Mastra agent and the MCP
- * client use Node APIs. We return a ReadableStream of Server-Sent Events; the
- * frontend reads it and builds the graph live.
+ * Reason (live) → search (Linkup) → propose selectable ideas. Same Node runtime
+ * + SSE mechanics as the main agent route, its own compact event contract.
  * ─────────────────────────────────────────────────────────────────────────
  */
 export const runtime = "nodejs";
-// SSE must not be buffered/cached by the platform.
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
 export async function POST(req: NextRequest) {
-  // ── Validate the request body against the shared Zod schema ─────────────
-  let topic: string;
-  let companyBrain: CompanyBrain | undefined;
+  let companyBrain;
   try {
-    const json = await req.json();
-    const parsed = RunRequestSchema.parse(json);
-    topic = parsed.topic;
+    const parsed = InspirationRequestSchema.parse(await req.json().catch(() => ({})));
     companyBrain = parsed.companyBrain;
   } catch {
-    return new Response(
-      JSON.stringify({ error: "Requête invalide. Fournis un champ \"topic\" (3–280 caractères)." }),
-      { status: 400, headers: { "Content-Type": "application/json" } },
-    );
+    return new Response(JSON.stringify({ error: "Requête invalide." }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   const encoder = new TextEncoder();
-
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       let closed = false;
-
-      // Serialize an AgentEvent as a single SSE "message" frame.
-      const emit = (event: AgentEvent) => {
+      const emit = (event: InspirationEvent) => {
         if (closed) return;
         try {
           controller.enqueue(
@@ -50,16 +41,19 @@ export async function POST(req: NextRequest) {
         }
       };
 
-      // If the client disconnects, stop emitting.
       req.signal.addEventListener("abort", () => {
         closed = true;
       });
-
-      // Opening comment kicks the connection (some proxies need first bytes).
       controller.enqueue(encoder.encode(": connected\n\n"));
 
       try {
-        await runAgentStream({ topic, companyBrain, emit });
+        await runInspirationStream({ brain: companyBrain, emit });
+      } catch (err) {
+        emit({
+          type: "error",
+          id: "error-1",
+          payload: { message: err instanceof Error ? err.message : "Erreur inattendue." },
+        });
       } finally {
         if (!closed) {
           controller.enqueue(encoder.encode("event: done\ndata: {}\n\n"));

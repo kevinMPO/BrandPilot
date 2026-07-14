@@ -1,6 +1,6 @@
 import { runWebSearch, sleep } from "../tools/brightDataSearch";
 import type { RunEmitter } from "./events";
-import type { Angle, SearchResult } from "./schemas";
+import { isBrainMeaningful, type Angle, type CompanyBrain, type SearchResult } from "./schemas";
 
 /**
  * ─────────────────────────────────────────────────────────────────────────
@@ -19,18 +19,22 @@ export async function runMockAgent(args: {
   topic: string;
   emitter: RunEmitter;
   avoid?: { themes: string[]; hooks: string[] };
+  brain?: CompanyBrain;
 }): Promise<Angle[]> {
-  const { topic, emitter, avoid } = args;
+  const { topic, emitter, avoid, brain } = args;
   const start = Date.now();
   const avoidNote =
     avoid && avoid.themes.length > 0
       ? ` (en évitant de répéter ce qu'on a déjà traité : ${avoid.themes.slice(0, 3).join(", ")})`
       : "";
+  const voiceNote = isBrainMeaningful(brain)
+    ? " Je garde votre profil en tête pour écrire dans votre voix."
+    : "";
 
   // ── Round 1: anchor a data-driven angle ────────────────────────────────
   await typeReasoning(
     emitter,
-    `Ok, je vais commencer ma réflexion sur « ${topic} »${avoidNote}. Première intuition : pour accrocher, il me faut des chiffres récents et solides. Je vais donc chercher des données pour ancrer un premier angle factuel.`,
+    `Ok, je vais commencer ma réflexion sur « ${topic} »${avoidNote}.${voiceNote} Première intuition : pour accrocher, il me faut des chiffres récents et solides. Je vais donc chercher des données pour ancrer un premier angle factuel.`,
     1,
   );
   await sleep(400);

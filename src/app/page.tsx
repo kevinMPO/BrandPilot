@@ -4,15 +4,19 @@ import * as React from "react";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { Github, PanelRightOpen, Bot } from "lucide-react";
+import { Github, PanelRightOpen, Plane } from "lucide-react";
 import { useAgentStream } from "@/hooks/useAgentStream";
+import { useCompanyBrain } from "@/hooks/useCompanyBrain";
+import { useInspirationStream } from "@/hooks/useInspirationStream";
 import { QueryBar } from "@/components/QueryBar";
 import { ResultPanel } from "@/components/ResultPanel";
 import { RunTimeline } from "@/components/RunTimeline";
+import { CompanyBrainDialog } from "@/components/CompanyBrainDialog";
+import { InspirationDialog } from "@/components/InspirationDialog";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
-import type { Angle } from "@/mastra/lib/schemas";
+import type { Angle, InspirationIdea } from "@/mastra/lib/schemas";
 
 // React Flow is heavy and browser-only: load it dynamically, no SSR.
 const AgentCanvas = dynamic(() => import("@/components/graph/AgentCanvas"), {
@@ -22,6 +26,12 @@ const AgentCanvas = dynamic(() => import("@/components/graph/AgentCanvas"), {
 
 export default function Home() {
   const { status, events, errorMessage, run, reset, abort } = useAgentStream();
+  const { brain, save, clear, configured } = useCompanyBrain();
+  const inspiration = useInspirationStream();
+
+  const [topic, setTopic] = React.useState("");
+  const [brainOpen, setBrainOpen] = React.useState(false);
+  const [inspirationOpen, setInspirationOpen] = React.useState(false);
   const [selectedNodeId, setSelectedNodeId] = React.useState<string | null>(null);
 
   // Collect the final angles (from the "final" event, or live "angle" events).
@@ -44,6 +54,27 @@ export default function Home() {
     }
   }, [status, errorMessage]);
 
+  // ── Launch the main agent on the current topic + Company Brain ──────────
+  const launch = React.useCallback(() => {
+    if (topic.trim().length >= 3) run(topic.trim(), brain);
+  }, [topic, brain, run]);
+
+  // ── Inspiration: open the panel and start discovering ideas ─────────────
+  const openInspiration = React.useCallback(() => {
+    setInspirationOpen(true);
+    if (inspiration.status !== "running") inspiration.start(brain);
+  }, [inspiration, brain]);
+
+  // ── Pick an idea → prefill the topic and launch the main agent ──────────
+  const pickIdea = React.useCallback(
+    (idea: InspirationIdea) => {
+      setTopic(idea.title);
+      setInspirationOpen(false);
+      run(idea.title, brain);
+    },
+    [run, brain],
+  );
+
   const timeline = (
     <RunTimeline events={events} selectedNodeId={selectedNodeId} onSelect={setSelectedNodeId} />
   );
@@ -54,18 +85,18 @@ export default function Home() {
       <header className="flex items-center gap-3 border-b border-border px-4 py-3 sm:px-6">
         <div className="flex items-center gap-2">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[linear-gradient(110deg,hsl(var(--gradient-from)),hsl(var(--gradient-via)),hsl(var(--gradient-to)))]">
-            <Bot className="h-4 w-4 text-white" />
+            <Plane className="h-4 w-4 text-white" />
           </span>
           <div className="leading-tight">
-            <h1 className="text-sm font-semibold">Content Agent</h1>
+            <h1 className="text-sm font-semibold">BrandPilot</h1>
             <p className="hidden text-[11px] text-muted-foreground sm:block">
-              Raisonnement d&apos;un agent ReAct, en direct
+              Votre copilote de contenu LinkedIn
             </p>
           </div>
         </div>
         <div className="ml-auto flex items-center gap-2">
           <Button variant="outline" size="icon" asChild aria-label="Code source">
-            <a href="https://github.com" target="_blank" rel="noopener noreferrer">
+            <a href="https://github.com/kevinMPO/BrandPilot" target="_blank" rel="noopener noreferrer">
               <Github className="h-4 w-4" />
             </a>
           </Button>
@@ -75,7 +106,18 @@ export default function Home() {
 
       {/* ── Query bar ──────────────────────────────────────────────────── */}
       <div className="border-b border-border px-4 py-4 sm:px-6">
-        <QueryBar status={status} onRun={run} onStop={abort} onReset={reset} />
+        <QueryBar
+          topic={topic}
+          setTopic={setTopic}
+          status={status}
+          onRun={launch}
+          onStop={abort}
+          onReset={reset}
+          onOpenBrain={() => setBrainOpen(true)}
+          brainConfigured={configured}
+          onInspire={openInspiration}
+          inspiring={inspiration.status === "running"}
+        />
       </div>
 
       {/* ── Main: canvas + timeline ────────────────────────────────────── */}
@@ -117,6 +159,33 @@ export default function Home() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Dialogs ────────────────────────────────────────────────────── */}
+      <CompanyBrainDialog
+        open={brainOpen}
+        onOpenChange={setBrainOpen}
+        brain={brain}
+        onSave={save}
+        onClear={clear}
+      />
+      <InspirationDialog
+        open={inspirationOpen}
+        onOpenChange={setInspirationOpen}
+        status={inspiration.status}
+        reasoning={inspiration.reasoning}
+        reasoningStreaming={inspiration.reasoningStreaming}
+        searches={inspiration.searches}
+        sources={inspiration.sources}
+        ideas={inspiration.ideas}
+        errorMessage={inspiration.errorMessage}
+        brainConfigured={configured}
+        onSelect={pickIdea}
+        onRetry={() => inspiration.start(brain)}
+        onOpenBrain={() => {
+          setInspirationOpen(false);
+          setBrainOpen(true);
+        }}
+      />
     </div>
   );
 }

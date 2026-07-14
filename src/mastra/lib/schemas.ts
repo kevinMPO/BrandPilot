@@ -11,14 +11,67 @@ import { z } from "zod";
  * ─────────────────────────────────────────────────────────────────────────
  */
 
+/**
+ * COMPANY BRAIN — who the author is. Captured once by the user (LinkedIn URL,
+ * company URL, a concise description) and optionally enriched from the web via
+ * Bright Data (`profile`). It is persisted client-side (localStorage) and sent
+ * along with each run so every post is written FROM this person's perspective.
+ * Every field is optional so a partial brain still helps.
+ */
+export const CompanyBrainSchema = z.object({
+  /** LinkedIn profile or company page URL. */
+  linkedinUrl: z.string().max(400).optional().default(""),
+  /** Company website URL. */
+  companyUrl: z.string().max(400).optional().default(""),
+  /** A concise, human-written description of who you are / what you do. */
+  description: z.string().max(2000).optional().default(""),
+  /** Enriched author/brand profile, built from the web (Bright Data). Editable. */
+  profile: z.string().max(4000).optional().default(""),
+  /** ISO date of the last save (for display / freshness). */
+  updatedAt: z.string().optional(),
+});
+export type CompanyBrain = z.infer<typeof CompanyBrainSchema>;
+
+/** True when a brain carries anything worth injecting into the agent. */
+export function isBrainMeaningful(b?: CompanyBrain | null): boolean {
+  if (!b) return false;
+  return Boolean(
+    (b.description && b.description.trim()) ||
+      (b.profile && b.profile.trim()) ||
+      (b.linkedinUrl && b.linkedinUrl.trim()) ||
+      (b.companyUrl && b.companyUrl.trim()),
+  );
+}
+
 /** The request the QueryBar POSTs to /api/agent/stream. */
 export const RunRequestSchema = z.object({
   topic: z
     .string()
     .min(3, "Le sujet doit faire au moins 3 caractères.")
     .max(280, "Le sujet est trop long (280 caractères max)."),
+  /** Optional author/brand context, so the agent writes in the user's voice. */
+  companyBrain: CompanyBrainSchema.optional(),
 });
 export type RunRequest = z.infer<typeof RunRequestSchema>;
+
+/** Request to enrich a Company Brain from the web (POST /api/company-brain/enrich). */
+export const EnrichRequestSchema = z.object({
+  linkedinUrl: z.string().max(400).optional().default(""),
+  companyUrl: z.string().max(400).optional().default(""),
+  description: z.string().max(2000).optional().default(""),
+});
+export type EnrichRequest = z.infer<typeof EnrichRequestSchema>;
+
+/** Result of a Company Brain enrichment. */
+export const EnrichResponseSchema = z.object({
+  /** A concise author/brand profile the user can review and edit. */
+  profile: z.string(),
+  /** URLs actually consulted to build the profile. */
+  sources: z.array(z.string()),
+  /** Whether real web data or a graceful fallback produced it. */
+  source: z.enum(["bright-data", "mock"]),
+});
+export type EnrichResponse = z.infer<typeof EnrichResponseSchema>;
 
 /** One real web result returned by the search tool (real OR mock — same shape). */
 export const SearchResultSchema = z.object({
@@ -26,7 +79,7 @@ export const SearchResultSchema = z.object({
   url: z.string(),
   snippet: z.string(),
   /** Where the result came from, for transparency in the UI. */
-  source: z.enum(["bright-data", "mock"]),
+  source: z.enum(["bright-data", "linkup", "mock"]),
 });
 export type SearchResult = z.infer<typeof SearchResultSchema>;
 
@@ -202,3 +255,65 @@ export type AgentEvent = z.infer<typeof AgentEventSchema>;
 
 /** Narrow helper: get the payload type for a given event type. */
 export type AgentEventOf<T extends EventType> = Extract<AgentEvent, { type: T }>;
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * INSPIRATION — the "propose me ideas" flow (Linkup + Company Brain).
+ * A lightweight live stream: the agent reasons out loud, searches the web,
+ * and proposes selectable post ideas. Selecting one prefills the topic and
+ * launches the main agent.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+/** One selectable post idea the inspiration agent proposes. */
+export const InspirationIdeaSchema = z.object({
+  /** Catchy idea / working hook for the post. */
+  title: z.string(),
+  /** The angle family, e.g. "Data-driven", "Contre-intuitif", "Retour d'expérience". */
+  angle: z.string(),
+  /** One line: why this resonates for THIS author, right now. */
+  rationale: z.string(),
+  /** Optional backing article (from Linkup). */
+  sourceTitle: z.string().optional(),
+  sourceUrl: z.string().optional(),
+});
+export type InspirationIdea = z.infer<typeof InspirationIdeaSchema>;
+
+/** Request the Inspiration panel POSTs to /api/inspiration/stream. */
+export const InspirationRequestSchema = z.object({
+  companyBrain: CompanyBrainSchema.optional(),
+});
+export type InspirationRequest = z.infer<typeof InspirationRequestSchema>;
+
+/** Events streamed by the inspiration run (its own small wire contract). */
+export const InspirationEventSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("reasoning"),
+    id: z.string(),
+    payload: z.object({ text: z.string(), streaming: z.boolean().optional() }),
+  }),
+  z.object({
+    type: z.literal("search"),
+    id: z.string(),
+    payload: z.object({ query: z.string() }),
+  }),
+  z.object({
+    type: z.literal("sources"),
+    id: z.string(),
+    payload: z.object({ results: z.array(SearchResultSchema) }),
+  }),
+  z.object({
+    type: z.literal("idea"),
+    id: z.string(),
+    payload: z.object({ index: z.number(), idea: InspirationIdeaSchema }),
+  }),
+  z.object({
+    type: z.literal("done"),
+    id: z.string(),
+    payload: z.object({ count: z.number() }),
+  }),
+  z.object({
+    type: z.literal("error"),
+    id: z.string(),
+    payload: z.object({ message: z.string() }),
+  }),
+]);
+export type InspirationEvent = z.infer<typeof InspirationEventSchema>;

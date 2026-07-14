@@ -94,7 +94,8 @@ Copier `.env.example` vers `.env.local`, puis remplir au besoin.
 | `ANTHROPIC_API_KEY`     | Clé pour utiliser les modèles Anthropic (Claude).                                          | Seulement si `MODEL_PROVIDER=anthropic/...` |
 | `OPENAI_API_KEY`        | Clé pour les modèles OpenAI.                                                                | Seulement si `MODEL_PROVIDER=openai/...`    |
 | `MISTRAL_API_KEY`       | Clé pour les modèles Mistral.                                                               | Seulement si `MODEL_PROVIDER=mistral/...`   |
-| `BRIGHT_DATA_API_TOKEN` | Active la **vraie** recherche web via Bright Data. Absente → résultats simulés.            | Non (mock sinon)                       |
+| `BRIGHT_DATA_API_TOKEN` | Active la **vraie** recherche web via Bright Data (rédacteur + enrichissement Company Brain). Absente → résultats simulés. | Non (mock sinon)                       |
+| `LINKUP_API_KEY`        | Active la **vraie** recherche web via Linkup (fonctionnalité **Inspiration**). Absente → idées simulées. | Non (mock sinon)                       |
 | `MAX_STEPS`             | Nombre maximum de tours de boucle de l'agent (garde-fou anti-boucle infinie).              | Non (défaut : 6)                       |
 | `CRITIC_MODEL_PROVIDER` | Modèle de l'agent **critique** (`fournisseur/modèle`), pour un regard indépendant.         | Non (défaut : un modèle Anthropic différent du rédacteur) |
 | `REVISE_THRESHOLD`      | Note critique (/100) sous laquelle un angle est réécrit (boucle critique → révision).      | Non (défaut : 75)                      |
@@ -114,7 +115,8 @@ src/
 │  │  ├─ criticAgent.ts            ← le CRITIQUE : note les 3 angles (modèle différent du rédacteur)
 │  │  └─ reviserAgent.ts           ← le RÉVISEUR : réécrit un angle faible ou non sourcé
 │  ├─ tools/
-│  │  ├─ brightDataSearch.ts       ← outil de recherche web : RÉEL (Bright Data MCP) OU mock
+│  │  ├─ brightDataSearch.ts       ← recherche web + scrape d'URL : RÉEL (Bright Data MCP) OU mock
+│  │  ├─ linkupSearch.ts           ← recherche web via Linkup MCP (fonctionnalité Inspiration) OU mock
 │  │  └─ publishAngles.ts          ← outil « j'ai fini » : l'agent l'appelle pour livrer 3 angles
 │  ├─ voice/                       ← FEW-SHOT : voix de l'auteur ≠ structure
 │  │  ├─ voice-corpus.ts           ← exemplaires annotés + VOICE_TRAITS + ANTI_VOICE (interdits)
@@ -130,16 +132,22 @@ src/
 │     ├─ runAgent.ts               ← orchestre : rédacteur → critique + ancrage → révision
 │     ├─ sourceRegistry.ts         ← capture chaque extrait ramené (base de preuves)
 │     ├─ verifyClaims.ts           ← vérifie que chaque fait est soutenu par une source réelle
+│     ├─ companyEnrich.ts          ← COMPANY BRAIN : scrape les liens + distille un profil auteur (LLM)
+│     ├─ runInspiration.ts         ← INSPIRATION : raisonne (live) → cherche (Linkup) → propose des idées
 │     └─ mockAgent.ts              ← l'agent de démonstration (boucle simulée, sans clé)
 │
 ├─ app/
 │  ├─ layout.tsx                   ← coquille HTML, polices, thème sombre, toasts
-│  ├─ page.tsx                     ← l'écran principal : barre + canvas + résultats + déroulé
+│  ├─ page.tsx                     ← l'écran principal : barre + canvas + résultats + déroulé + dialogs
 │  ├─ globals.css                  ← les TOKENS de design (couleurs, ombres, dégradés)
-│  └─ api/agent/stream/route.ts    ← le serveur SSE : lance l'agent, envoie un événement par tour
+│  ├─ api/agent/stream/route.ts    ← le serveur SSE : lance l'agent, envoie un événement par tour
+│  ├─ api/company-brain/enrich/route.ts ← enrichit le Company Brain (scrape + LLM)
+│  └─ api/inspiration/stream/route.ts   ← SSE Inspiration : raisonnement live + idées
 │
 ├─ components/
-│  ├─ QueryBar.tsx                 ← saisie du sujet + bouton Lancer + états
+│  ├─ QueryBar.tsx                 ← sujet (contrôlé) + Lancer + Inspiration + déclencheur Company Brain
+│  ├─ CompanyBrainDialog.tsx       ← popup « qui êtes-vous » : liens + descriptif + profil enrichi
+│  ├─ InspirationDialog.tsx        ← popup Inspiration : raisonnement live + cartes d'idées sélectionnables
 │  ├─ ResultPanel.tsx              ← les 3 angles finaux, avec « Copier le post »
 │  ├─ RunTimeline.tsx              ← barre latérale : étapes + compteur de tokens/latence
 │  ├─ theme-provider.tsx / theme-toggle.tsx ← gestion du thème clair/sombre
@@ -156,7 +164,9 @@ src/
 │     └─ edges/GradientEdge.tsx    ← l'arête à dégradé animé (et la boucle orange)
 │
 ├─ hooks/
-│  └─ useAgentStream.ts            ← côté navigateur : lit le flux SSE et valide chaque événement
+│  ├─ useAgentStream.ts            ← côté navigateur : lit le flux SSE et valide chaque événement
+│  ├─ useCompanyBrain.ts           ← persiste le Company Brain (localStorage) ; envoyé à chaque run
+│  └─ useInspirationStream.ts      ← lit le flux SSE Inspiration (raisonnement + idées)
 │
 └─ (racine) evals/                 ← ÉVALS hors ligne (npm run evals)
    ├─ subjects.mjs                 ← jeu de sujets représentatifs

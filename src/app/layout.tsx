@@ -6,9 +6,9 @@ import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Content Agent — angles LinkedIn en direct",
+  title: "BrandPilot — votre copilote de contenu LinkedIn",
   description:
-    "Un agent IA (Mastra) génère des angles de posts LinkedIn à partir d'un sujet, en cherchant du contexte web réel, et affiche son raisonnement en direct sous forme de graphe.",
+    "BrandPilot est l'agent IA qui vous connaît : il réfléchit en direct, cherche du contexte web réel, et vous livre 3 angles de posts LinkedIn sourcés, écrits dans votre voix.",
 };
 
 export default function RootLayout({

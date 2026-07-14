@@ -158,6 +158,43 @@ async function brightDataMcpSearch(
 }
 
 /**
+ * Scrape ONE url to (markdown) text via Bright Data's MCP `scrape_as_markdown`
+ * tool. Best-effort: returns `{ text: "", ok: false }` when there's no token,
+ * the url is invalid, or the call fails — the caller degrades gracefully.
+ *
+ * Used by the Company Brain enrichment to read a LinkedIn profile / company
+ * page and distill an author profile from it.
+ */
+export async function brightDataScrape(
+  url: string,
+): Promise<{ text: string; ok: boolean }> {
+  const token = process.env.BRIGHT_DATA_API_TOKEN;
+  if (!token || !/^https?:\/\//i.test(url)) return { text: "", ok: false };
+  try {
+    const client = (await getMcpClient(token)) as {
+      getTools: () => Promise<Record<string, { execute: (a: unknown) => Promise<unknown> }>>;
+    };
+    const tools = await client.getTools();
+    const names = Object.keys(tools);
+    // Prefer plain markdown scraping; fall back to any scrape-like tool.
+    const key =
+      names.find((k) => /scrape_as_markdown$/i.test(k)) ??
+      names.find((k) => /scrape_as/i.test(k)) ??
+      names.find((k) => /scrape/i.test(k));
+    if (!key) return { text: "", ok: false };
+    const raw = await tools[key].execute({ context: { url } });
+    const text = extractMcpText(raw).replace(/\n{3,}/g, "\n\n").trim();
+    return { text, ok: text.length > 0 };
+  } catch (err) {
+    console.warn(
+      "[brightDataScrape] failed:",
+      err instanceof Error ? err.message : err,
+    );
+    return { text: "", ok: false };
+  }
+}
+
+/**
  * Pull the text payload out of an MCP tool result.
  * Bright Data wraps output as `{ content: [{ type: "text", text }] }`.
  */
