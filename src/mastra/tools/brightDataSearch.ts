@@ -97,9 +97,9 @@ export async function runWebSearch(
 let mcpClientPromise: Promise<unknown> | null = null;
 
 /**
- * Fire-and-forget warm-up of the Bright Data MCP server. The first real search
- * otherwise pays the cost of spawning the `npx @brightdata/mcp` process; calling
- * this early (while the model does its first reasoning) hides that latency.
+ * Fire-and-forget warm-up of the Bright Data MCP connection. The first real
+ * search otherwise pays the connection/handshake cost; calling this early (while
+ * the model does its first reasoning) hides that latency.
  */
 export function prewarmBrightData(): void {
   const token = process.env.BRIGHT_DATA_API_TOKEN;
@@ -122,10 +122,13 @@ async function getMcpClient(token: string) {
       return new MCPClient({
         servers: {
           brightData: {
-            // Bright Data ships an MCP server runnable via npx.
-            command: "npx",
-            args: ["-y", "@brightdata/mcp"],
-            env: { API_TOKEN: token },
+            // Remote HOSTED MCP over HTTP — token passed as the `token` query
+            // param (free tier includes the `search_engine` + `scrape_as_markdown`
+            // tools). No child process → runs on any serverless Node host.
+            // (Previously spawned `npx @brightdata/mcp` as a stdio subprocess.)
+            url: new URL(
+              `https://mcp.brightdata.com/mcp?token=${encodeURIComponent(token)}`,
+            ),
           },
         },
       });

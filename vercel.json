@@ -3,6 +3,12 @@
   "functions": {
     "src/app/api/agent/stream/route.ts": {
       "maxDuration": 120
+    },
+    "src/app/api/inspiration/stream/route.ts": {
+      "maxDuration": 120
+    },
+    "src/app/api/company-brain/enrich/route.ts": {
+      "maxDuration": 60
     }
   },
   "headers": [
