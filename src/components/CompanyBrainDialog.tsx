@@ -3,7 +3,7 @@
 import * as React from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { toast } from "sonner";
-import { X, Brain, Linkedin, Globe, Sparkles, Loader2, Save, Trash2 } from "lucide-react";
+import { X, Brain, Linkedin, Globe, Sparkles, Loader2, Save, Trash2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -38,6 +38,7 @@ export function CompanyBrainDialog({
   const [companyUrl, setCompanyUrl] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [profile, setProfile] = React.useState("");
+  const [constraints, setConstraints] = React.useState("");
   const [enriching, setEnriching] = React.useState(false);
 
   // Seed the fields from the saved brain each time the dialog opens.
@@ -47,6 +48,7 @@ export function CompanyBrainDialog({
       setCompanyUrl(brain.companyUrl ?? "");
       setDescription(brain.description ?? "");
       setProfile(brain.profile ?? "");
+      setConstraints(brain.constraints ?? "");
     }
   }, [open, brain]);
 
@@ -91,6 +93,7 @@ export function CompanyBrainDialog({
       companyUrl: companyUrl.trim(),
       description: description.trim(),
       profile: profile.trim(),
+      constraints: constraints.trim(),
     });
     onSave(next);
     toast.success("Company Brain enregistré — vos posts seront écrits dans votre voix.");
@@ -102,6 +105,7 @@ export function CompanyBrainDialog({
     setCompanyUrl("");
     setDescription("");
     setProfile("");
+    setConstraints("");
     onClear();
     toast.message("Company Brain effacé.");
   };
@@ -202,6 +206,21 @@ export function CompanyBrainDialog({
                 placeholder="Le profil apparaîtra ici après « Récupérer mes infos » — ou écrivez-le vous-même."
                 rows={6}
                 maxLength={4000}
+                className="flex w-full resize-y rounded-md border border-input bg-background/60 px-3 py-2 text-sm leading-relaxed ring-offset-background transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              />
+            </Field>
+
+            <Field
+              label="Garde-fous"
+              icon={<ShieldCheck className="h-4 w-4" />}
+              hint="règles que l'agent doit TOUJOURS respecter"
+            >
+              <textarea
+                value={constraints}
+                onChange={(e) => setConstraints(e.target.value)}
+                placeholder="Ex : ne jamais tutoyer (vouvoiement uniquement) · pas d'emoji · éviter le jargon · pas de « game changer »…"
+                rows={3}
+                maxLength={1500}
                 className="flex w-full resize-y rounded-md border border-input bg-background/60 px-3 py-2 text-sm leading-relaxed ring-offset-background transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               />
             </Field>

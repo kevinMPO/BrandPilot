@@ -170,6 +170,7 @@ function brainToText(brain?: CompanyBrain): string {
   else if (brain.description?.trim()) parts.push(brain.description.trim());
   const links = [brain.linkedinUrl, brain.companyUrl].map((u) => (u ?? "").trim()).filter(Boolean);
   if (links.length) parts.push(`Liens : ${links.join(" · ")}`);
+  if (brain.constraints?.trim()) parts.push(`Garde-fous à respecter : ${brain.constraints.trim()}`);
   return parts.join("\n").slice(0, 3000);
 }
 

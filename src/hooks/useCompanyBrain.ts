@@ -9,7 +9,7 @@ import { CompanyBrainSchema, isBrainMeaningful, type CompanyBrain } from "@/mast
  * brain is sent along with each agent request.
  */
 const KEY = "brandpilot.companyBrain.v1";
-const EMPTY: CompanyBrain = { linkedinUrl: "", companyUrl: "", description: "", profile: "" };
+const EMPTY: CompanyBrain = { linkedinUrl: "", companyUrl: "", description: "", profile: "", constraints: "" };
 
 export interface UseCompanyBrain {
   brain: CompanyBrain;

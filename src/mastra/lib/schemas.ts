@@ -27,6 +27,12 @@ export const CompanyBrainSchema = z.object({
   description: z.string().max(2000).optional().default(""),
   /** Enriched author/brand profile, built from the web (Bright Data). Editable. */
   profile: z.string().max(4000).optional().default(""),
+  /**
+   * Guardrails — hard rules the agent must ALWAYS respect (e.g. "ne jamais
+   * tutoyer", "pas d'emoji"). Injected as non-negotiable constraints so the
+   * agent stops repeating things you don't want.
+   */
+  constraints: z.string().max(1500).optional().default(""),
   /** ISO date of the last save (for display / freshness). */
   updatedAt: z.string().optional(),
 });
@@ -38,6 +44,7 @@ export function isBrainMeaningful(b?: CompanyBrain | null): boolean {
   return Boolean(
     (b.description && b.description.trim()) ||
       (b.profile && b.profile.trim()) ||
+      (b.constraints && b.constraints.trim()) ||
       (b.linkedinUrl && b.linkedinUrl.trim()) ||
       (b.companyUrl && b.companyUrl.trim()),
   );
